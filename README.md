@@ -14,5 +14,5 @@ Will likely expand to other Graph-supported entities in the near future, unless 
 - azure-identity
 - requests
 
-## Reference
+## Documentation
 - [Microsoft v1.0 API Reference](https://learn.microsoft.com/en-us/graph/api/overview?view=graph-rest-1.0&preserve-view=true)
