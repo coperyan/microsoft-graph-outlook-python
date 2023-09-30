@@ -13,3 +13,6 @@ Will likely expand to other Graph-supported entities in the near future, unless 
 - python >= 3.6x
 - azure-identity
 - requests
+
+## Reference
+- [Microsoft v1.0 API Reference](https://learn.microsoft.com/en-us/graph/api/overview?view=graph-rest-1.0&preserve-view=true)
