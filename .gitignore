@@ -1,0 +1,4 @@
+tests/
+msgraph_outlook.egg-info/
+__pycache__/
+*.pyc
