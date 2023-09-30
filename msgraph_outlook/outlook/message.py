@@ -5,6 +5,12 @@ from .utils import build_url
 
 
 class Message:
+    """Message Object
+
+    https://learn.microsoft.com/en-us/graph/api/resources/message?view=graph-rest-1.0
+
+    """
+
     _endpoints = {
         "create_message": "/messages",
         "create_message_in_folder": "/mailFolders/{id}/messages",
@@ -14,12 +20,16 @@ class Message:
     def __init__(self, client, user=None, message_obj={}, **kwargs):
         """Initializes Message Object
 
+        https://learn.microsoft.com/en-us/graph/api/resources/message?view=graph-rest-1.0
+
         Parameters
         ----------
-            credentials (_type_, optional): _type_, default None
-                Credentials object to be used for further commands within the instance
-            message_id (_type_, optional): _type_, default None
-                Message ID (passed for existing items)
+            client : _type_
+                GraphClient object
+            user (_type_, optional): _type_, default None
+                User for delegation purposes (if blank will use 'me' property)
+            message_obj (dict, optional): dict, default {}
+                Can initialize with message JSON if needed
         """
 
         self.client = client
@@ -110,6 +120,15 @@ class Message:
         return build_url(user=self.user, endpoint=url)
 
     def api_json(self) -> dict:
+        """Generate MessageBody for Message
+
+        https://learn.microsoft.com/en-us/graph/api/resources/message?view=graph-rest-1.0
+
+        Returns
+        -------
+            dict
+                Json/Dict representation of Message
+        """
         message = {
             "subject": self.subject,
             "body": {"contentType": self.body_type, "content": self.body},
@@ -126,14 +145,16 @@ class Message:
         return message
 
     def save_draft(self):
+        """Save Draft of Message Object
+
+        Will update existing message if already exists
+        """
         if self._id:
-            ##Handle updating of existing message?
             url = self._build_url(self._endpoints.get("message").format(id=self.id))
             data = self.api_json()
             client_req = self.client.patch
             pass
         else:
-            # Prevent unintended "creation of drafts?"
             url = self._build_url(
                 self._endpoints.get("create_message_in_folder").format(id="drafts")
             )
