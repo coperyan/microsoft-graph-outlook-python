@@ -12,7 +12,7 @@ client = GraphClient(
 )
 
 # Create account reference
-acct = Account(client, user="test@outlook.com")
+acct = Account(client, user="reporting@1800radiator.com")
 
 # New message object
 msg = acct.create_message()
@@ -26,3 +26,6 @@ msg.save_draft()
 # Update body, re-save
 msg.body = "This is an update test."
 msg.save_draft()
+
+# Send message
+msg.send()

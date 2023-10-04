@@ -1,6 +1,8 @@
+from datetime import datetime
 from typing import Union
-from .recipient import Recipients, Recipient
-from .attachment import Attachments, Attachment
+
+from .attachment import Attachment, Attachments
+from .recipient import Recipient, Recipients
 from .utils import build_url
 
 
@@ -15,6 +17,8 @@ class Message:
         "create_message": "/messages",
         "create_message_in_folder": "/mailFolders/{id}/messages",
         "message": "/messages/{id}",
+        "send_message": "/messages/sendMail",
+        "send_draft_message": "/messages/{id}/send",
     }
 
     def __init__(self, client, user=None, message_obj={}, **kwargs):
@@ -36,6 +40,8 @@ class Message:
         self.user = user
         self._id = message_obj.get("id", None)
         self._folder_id = message_obj.get("parentFolderId", None)
+        self._is_draft = message_obj.get("isDraft", True)
+        self._is_read = message_obj.get("isRead", None)
         self._created_datetime = message_obj.get("createdDateTime", None)
         self._last_modified_datetime = message_obj.get("lastModifiedDateTime", None)
         self._sender = Recipient(message_obj.get("from"), None)
@@ -119,7 +125,7 @@ class Message:
     def _build_url(self, url: str) -> str:
         return build_url(user=self.user, endpoint=url)
 
-    def api_json(self) -> dict:
+    def api_json(self, limit_keys: list = None) -> dict:
         """Generate MessageBody for Message
 
         https://learn.microsoft.com/en-us/graph/api/resources/message?view=graph-rest-1.0
@@ -142,12 +148,71 @@ class Message:
         if self.bcc_recipients:
             message["bccRecipients"] = self.bcc_recipients.get_json_format()
 
+        if limit_keys:
+            for key in list(message.keys()):
+                if key not in limit_keys:
+                    del message[key]
+
         return message
+
+    def mark_as_unread(self):
+        if not self._id:
+            pass  ##exception here
+
+        data = {"isRead": False}
+        url = self._build_url(self._endpoints.get("message").format(id=self._id))
+        resp = self.client.patch(url, data=data)
+        if not resp:
+            return False
+
+        self._is_read = False
+        return True
+
+    def mark_as_read(self):
+        if not self._id:
+            pass  ##exception here
+
+        data = {"isRead": True}
+        url = self._build_url(self._endpoints.get("message").format(id=self._id))
+        resp = self.client.patch(url, data=data)
+        if not resp:
+            return False
+
+        self._is_read = False
+        return True
+
+    def save(self):
+        """Save (Existing) Message Object
+
+        Returns
+        -------
+            bool
+                Success of response
+        """
+        if self._id and not self._is_draft:
+            url = self._build_url(self._endpoints.get("message").format(id=self._id))
+            data = self.api_json(limit_keys=["isRead", "categories", "flag", "subject"])
+            resp = self.client.patch(url, data=data)
+
+            if not resp:
+                return False
+
+            self._last_modified_datetime = datetime.now()  ##handle timezone later
+
+            return True
+        else:
+            return self.save_draft()
 
     def save_draft(self):
         """Save Draft of Message Object
 
         Will update existing message if already exists
+
+        Returns
+        -------
+            bool
+                Success of response
+
         """
         if self._id:
             url = self._build_url(self._endpoints.get("message").format(id=self.id))
@@ -161,7 +226,12 @@ class Message:
             data = self.api_json()
             client_req = self.client.post
 
+        if not data:
+            return True
+
         resp = client_req(url, data=data)
+        if not resp:
+            return False
 
         if not self._id:
             message_json = resp.json()
@@ -171,3 +241,31 @@ class Message:
             self._last_modified_datetime = message_json.get(
                 "lastModifiedDateTime", None
             )
+        else:
+            self._last_modified_datetime = datetime.now()  ##handle timezone later
+
+        return True
+
+    def send(self):
+        if self._id and not self._is_draft:
+            pass  # error here
+
+        if self._is_draft and self._id:
+            self.save_draft()
+            url = self._build_url(
+                self._endpoints.get("send_draft_message").format(id=self._id)
+            )
+            resp = self.client.post(url, data=None)
+
+        else:
+            url = self._build_url(self._endpoints.get("send_message"))
+            data = {"message": self.api_json()}
+            resp = self.client.post(url, data=data)
+
+        if not resp:
+            return False
+
+        self._id = "message_sent" if not self._id else self._id
+        self._is_draft = False
+
+        return True
